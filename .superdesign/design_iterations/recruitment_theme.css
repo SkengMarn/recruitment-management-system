@@ -1,0 +1,69 @@
+:root {
+  --background: oklch(0.9900 0.0050 240.0000);
+  --foreground: oklch(0.1200 0.0100 240.0000);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.1200 0.0100 240.0000);
+  --popover: oklch(1.0000 0 0);
+  --popover-foreground: oklch(0.1200 0.0100 240.0000);
+  --primary: oklch(0.5800 0.2400 250.0000);
+  --primary-foreground: oklch(0.9900 0.0050 240.0000);
+  --secondary: oklch(0.9600 0.0200 240.0000);
+  --secondary-foreground: oklch(0.2000 0.0150 240.0000);
+  --muted: oklch(0.9600 0.0200 240.0000);
+  --muted-foreground: oklch(0.4500 0.0100 240.0000);
+  --accent: oklch(0.6200 0.2200 160.0000);
+  --accent-foreground: oklch(0.9900 0.0050 240.0000);
+  --destructive: oklch(0.6000 0.2800 15.0000);
+  --destructive-foreground: oklch(0.9900 0.0050 240.0000);
+  --border: oklch(0.9200 0.0150 240.0000);
+  --input: oklch(0.9200 0.0150 240.0000);
+  --ring: oklch(0.5800 0.2400 250.0000);
+  --chart-1: oklch(0.5800 0.2400 250.0000);
+  --chart-2: oklch(0.6200 0.2200 160.0000);
+  --chart-3: oklch(0.6800 0.2600 45.0000);
+  --chart-4: oklch(0.6400 0.2400 300.0000);
+  --chart-5: oklch(0.5600 0.2200 200.0000);
+  --sidebar: oklch(0.9800 0.0100 240.0000);
+  --sidebar-foreground: oklch(0.1200 0.0100 240.0000);
+  --sidebar-primary: oklch(0.5800 0.2400 250.0000);
+  --sidebar-primary-foreground: oklch(0.9900 0.0050 240.0000);
+  --sidebar-accent: oklch(0.9600 0.0200 240.0000);
+  --sidebar-accent-foreground: oklch(0.2000 0.0150 240.0000);
+  --sidebar-border: oklch(0.9200 0.0150 240.0000);
+  --sidebar-ring: oklch(0.5800 0.2400 250.0000);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Inter', Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0 1px 2px 0px hsl(240 5% 15% / 0.04);
+  --shadow-xs: 0 1px 3px 0px hsl(240 5% 15% / 0.06);
+  --shadow-sm: 0 2px 4px -1px hsl(240 5% 15% / 0.08), 0 1px 2px -1px hsl(240 5% 15% / 0.06);
+  --shadow: 0 4px 6px -1px hsl(240 5% 15% / 0.08), 0 2px 4px -2px hsl(240 5% 15% / 0.06);
+  --shadow-md: 0 6px 12px -2px hsl(240 5% 15% / 0.10), 0 2px 4px -2px hsl(240 5% 15% / 0.06);
+  --shadow-lg: 0 12px 24px -4px hsl(240 5% 15% / 0.12), 0 4px 8px -2px hsl(240 5% 15% / 0.08);
+  --shadow-xl: 0 20px 40px -8px hsl(240 5% 15% / 0.15), 0 8px 16px -4px hsl(240 5% 15% / 0.10);
+  --shadow-2xl: 0 32px 64px -12px hsl(240 5% 15% / 0.20);
+  --tracking-normal: -0.01em;
+  --spacing: 0.25rem;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Custom recruitment-specific variables */
+  --success: oklch(0.6200 0.2200 160.0000);
+  --success-foreground: oklch(0.9900 0.0050 240.0000);
+  --warning: oklch(0.6800 0.2600 45.0000);
+  --warning-foreground: oklch(0.9900 0.0050 240.0000);
+  --info: oklch(0.5600 0.2200 200.0000);
+  --info-foreground: oklch(0.9900 0.0050 240.0000);
+  
+  /* Stage-specific colors */
+  --stage-passport: oklch(0.5800 0.2400 250.0000);
+  --stage-interview: oklch(0.6400 0.2400 300.0000);
+  --stage-medical: oklch(0.6800 0.2600 45.0000);
+  --stage-training: oklch(0.6200 0.2200 160.0000);
+  --stage-visa: oklch(0.5600 0.2200 200.0000);
+  --stage-deployment: oklch(0.6200 0.2200 160.0000);
+}
