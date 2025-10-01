@@ -2,11 +2,11 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from './components/ui/avatar';
-import GlobalSearch from './components/GlobalSearch';
+import { AuthProvider } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
 import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import PerformanceMonitor from './components/PerformanceMonitor';
 import { 
   LayoutDashboard, 
   Users, 
@@ -253,6 +253,7 @@ export default function App() {
           } />
         </Routes>
       </Router>
+      <PerformanceMonitor />
     </AuthProvider>
   );
 }
