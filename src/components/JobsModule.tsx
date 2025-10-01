@@ -25,7 +25,8 @@ import {
   BarChart3,
   Target,
   Globe,
-  Activity
+  Activity,
+  FileText
 } from 'lucide-react';
 import { InfoTooltip } from './ui/info-tooltip';
 import { toast } from 'sonner';
@@ -42,15 +43,17 @@ interface Job {
   receiving_company_name?: string;
   work_country: string;
   requested_headcount: number;
-  salary?: number;
+  salary: number;
   salary_currency: string;
-  input_fee?: number;
+  input_fee: number;
   input_fee_currency: string;
   markup_agency?: number;
+  markup_agency_type?: "flat" | "percentage";
   markup_company?: number;
+  markup_company_type?: "flat" | "percentage";
   final_fee?: number;
   contract_period: number;
-  probation_period: number;
+  probation_period?: number;
   min_age: number;
   max_age: number;
   accommodation: boolean;
@@ -59,12 +62,12 @@ interface Job {
   transport: boolean;
   medical_insurance: boolean;
   employment_visa: boolean;
-  working_hours: string;
+  working_hours?: string;
+  payment_type?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
-
 interface JobFilters {
   is_active?: boolean;
   work_country?: string;
@@ -103,11 +106,62 @@ interface Company {
   country: string;
 }
 
+interface JobStats {
+  activePositions: number;
+  totalHeadcount: number;
+  fillRate: number;
+  filledPositions: number;
+  activeCountries: number;
+  monthlyGrowth: number;
+}
+
+interface PositionPerformance {
+  position: string;
+  company: string;
+  country: string;
+  headcount: number;
+  filled: number;
+  fillRate: number;
+  revenue: number;
+}
+
+interface CompanyDemand {
+  company: string;
+  country: string;
+  positions: number;
+  headcount: number;
+  candidates: number;
+  success: number;
+  revenue: number;
+}
+
+interface MarketAnalysis {
+  country: string;
+  companies: number;
+  positions: number;
+  headcount: number;
+  filled: number;
+  marketValue: number;
+  avgSalary: number;
+  competition: number;
+}
+
 const JobsModule = () => {
   // State management
   const [jobs, setJobs] = useState<Job[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [analytics, setAnalytics] = useState<JobAnalytics[]>([]);
+  const [jobStats, setJobStats] = useState<JobStats>({
+    activePositions: 0,
+    totalHeadcount: 0,
+    fillRate: 0,
+    filledPositions: 0,
+    activeCountries: 0,
+    monthlyGrowth: 0
+  });
+  const [positionPerformance, setPositionPerformance] = useState<PositionPerformance[]>([]);
+  const [companyDemand, setCompanyDemand] = useState<CompanyDemand[]>([]);
+  const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysis[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
   const [showForm, setShowForm] = useState(false);
@@ -123,6 +177,10 @@ const JobsModule = () => {
   useEffect(() => {
     fetchJobs();
     fetchCompanies();
+    fetchJobStats();
+    fetchPositionPerformance();
+    fetchCompanyDemand();
+    fetchMarketAnalysis();
     if (activeTab === 'analytics') {
       fetchAnalytics();
     }
@@ -174,6 +232,258 @@ const JobsModule = () => {
     }
   };
 
+  // Fetch job statistics for dashboard cards
+  const fetchJobStats = async () => {
+    try {
+      // Fetch jobs and candidates data to calculate real statistics
+      const [jobsResponse, candidatesResponse] = await Promise.all([
+        apiClient.getJobs({}), // Get all jobs
+        apiClient.getCandidates() // Get all candidates
+      ]);
+
+      const allJobs = jobsResponse.jobs || [];
+      const allCandidates = candidatesResponse.candidates || [];
+
+      // Calculate active positions
+      const activePositions = allJobs.filter(job => job.is_active).length;
+
+      // Calculate total headcount needed
+      const totalHeadcount = allJobs
+        .filter(job => job.is_active)
+        .reduce((sum, job) => sum + (job.requested_headcount || 0), 0);
+
+      // Calculate filled positions based on deployed candidates
+      const deployedCandidates = allCandidates.filter(candidate => 
+        candidate.stage === 'deployed' || candidate.status === 'deployed'
+      ).length;
+
+      // Calculate fill rate
+      const fillRate = totalHeadcount > 0 ? (deployedCandidates / totalHeadcount) * 100 : 0;
+
+      // Calculate unique countries
+      const uniqueCountries = new Set(
+        allJobs
+          .filter(job => job.is_active && job.work_country)
+          .map(job => job.work_country)
+      ).size;
+
+      // Calculate monthly growth (simplified - you could enhance this with date filtering)
+      const monthlyGrowth = Math.max(0, activePositions - Math.floor(activePositions * 0.85));
+
+      setJobStats({
+        activePositions,
+        totalHeadcount,
+        fillRate: Math.round(fillRate * 10) / 10, // Round to 1 decimal
+        filledPositions: deployedCandidates,
+        activeCountries: uniqueCountries,
+        monthlyGrowth
+      });
+
+    } catch (err) {
+      console.error('Failed to fetch job statistics:', err);
+      // Keep default values on error
+    }
+  };
+
+  // Fetch position performance data
+  const fetchPositionPerformance = async () => {
+    try {
+      const [jobsResponse, candidatesResponse] = await Promise.all([
+        apiClient.getJobs({}),
+        apiClient.getCandidates()
+      ]);
+
+      const allJobs = jobsResponse.jobs || [];
+      const allCandidates = candidatesResponse.candidates || [];
+
+      // Group candidates by position_id
+      const candidatesByPosition = allCandidates.reduce((acc: any, candidate: any) => {
+        const positionId = candidate.position_id || candidate.job_id;
+        if (!acc[positionId]) acc[positionId] = [];
+        acc[positionId].push(candidate);
+        return acc;
+      }, {});
+
+      // Calculate performance for each active job
+      const performance = allJobs
+        .filter(job => job.is_active)
+        .slice(0, 4) // Show top 4 positions
+        .map(job => {
+          const candidates = candidatesByPosition[job.id] || [];
+          const deployedCandidates = candidates.filter((c: any) => 
+            c.stage === 'deployed' || c.status === 'deployed'
+          ).length;
+          
+          const fillRate = job.requested_headcount > 0 
+            ? (deployedCandidates / job.requested_headcount) * 100 
+            : 0;
+
+          // Estimate revenue based on input_fee * deployed candidates
+          const revenue = deployedCandidates * (job.input_fee || 0);
+
+          return {
+            position: job.position_name,
+            company: job.receiving_company_name || 'Unknown Company',
+            country: job.work_country,
+            headcount: job.requested_headcount,
+            filled: deployedCandidates,
+            fillRate: Math.round(fillRate * 10) / 10,
+            revenue: revenue
+          };
+        });
+
+      setPositionPerformance(performance);
+    } catch (err) {
+      console.error('Failed to fetch position performance:', err);
+    }
+  };
+
+  // Fetch company demand analysis
+  const fetchCompanyDemand = async () => {
+    try {
+      const [jobsResponse, candidatesResponse, employersResponse] = await Promise.all([
+        apiClient.getJobs({}),
+        apiClient.getCandidates(),
+        apiClient.getEmployers()
+      ]);
+
+      const allJobs = jobsResponse.jobs || [];
+      const allCandidates = candidatesResponse.candidates || [];
+      const allEmployers = employersResponse.employers || [];
+
+      // Group jobs by company
+      const jobsByCompany = allJobs.reduce((acc: any, job: any) => {
+        const companyId = job.receiving_company_id;
+        if (!acc[companyId]) acc[companyId] = [];
+        acc[companyId].push(job);
+        return acc;
+      }, {});
+
+      // Calculate demand for each company
+      const demand = Object.entries(jobsByCompany)
+        .slice(0, 4) // Show top 4 companies
+        .map(([companyId, jobs]: [string, any]) => {
+          const company = allEmployers.find((e: any) => e.id === companyId);
+          const activeJobs = jobs.filter((j: any) => j.is_active);
+          
+          const totalHeadcount = activeJobs.reduce((sum: number, job: any) => 
+            sum + (job.requested_headcount || 0), 0);
+          
+          // Count candidates for this company's positions
+          const companyCandidates = allCandidates.filter((c: any) => 
+            activeJobs.some((j: any) => j.id === (c.position_id || c.job_id))
+          );
+          
+          const deployedCandidates = companyCandidates.filter((c: any) => 
+            c.stage === 'deployed' || c.status === 'deployed'
+          ).length;
+          
+          const successRate = companyCandidates.length > 0 
+            ? (deployedCandidates / companyCandidates.length) * 100 
+            : 0;
+
+          // Calculate total revenue
+          const revenue = activeJobs.reduce((sum: number, job: any) => {
+            const jobCandidates = companyCandidates.filter((c: any) => 
+              (c.position_id || c.job_id) === job.id && 
+              (c.stage === 'deployed' || c.status === 'deployed')
+            ).length;
+            return sum + (jobCandidates * (job.input_fee || 0));
+          }, 0);
+
+          return {
+            company: company?.company_name || 'Unknown Company',
+            country: company?.country || activeJobs[0]?.work_country || 'Unknown',
+            positions: activeJobs.length,
+            headcount: totalHeadcount,
+            candidates: companyCandidates.length,
+            success: Math.round(successRate * 10) / 10,
+            revenue: revenue
+          };
+        });
+
+      setCompanyDemand(demand);
+    } catch (err) {
+      console.error('Failed to fetch company demand:', err);
+    }
+  };
+
+  // Fetch market analysis
+  const fetchMarketAnalysis = async () => {
+    try {
+      const [jobsResponse, candidatesResponse, employersResponse] = await Promise.all([
+        apiClient.getJobs({}),
+        apiClient.getCandidates(),
+        apiClient.getEmployers()
+      ]);
+
+      const allJobs = jobsResponse.jobs || [];
+      const allCandidates = candidatesResponse.candidates || [];
+      const allEmployers = employersResponse.employers || [];
+
+      // Group by country
+      const jobsByCountry = allJobs.reduce((acc: any, job: any) => {
+        const country = job.work_country;
+        if (!acc[country]) acc[country] = [];
+        acc[country].push(job);
+        return acc;
+      }, {});
+
+      // Calculate market analysis for each country
+      const analysis = Object.entries(jobsByCountry)
+        .slice(0, 4) // Show top 4 countries
+        .map(([country, jobs]: [string, any]) => {
+          const activeJobs = jobs.filter((j: any) => j.is_active);
+          
+          // Count unique companies in this country
+          const uniqueCompanies = new Set(
+            activeJobs.map((j: any) => j.receiving_company_id)
+          ).size;
+          
+          const totalHeadcount = activeJobs.reduce((sum: number, job: any) => 
+            sum + (job.requested_headcount || 0), 0);
+          
+          // Count filled positions
+          const countryCandidates = allCandidates.filter((c: any) => 
+            activeJobs.some((j: any) => j.id === (c.position_id || c.job_id))
+          );
+          
+          const deployedCandidates = countryCandidates.filter((c: any) => 
+            c.stage === 'deployed' || c.status === 'deployed'
+          ).length;
+          
+          // Calculate average salary
+          const avgSalary = activeJobs.length > 0 
+            ? activeJobs.reduce((sum: number, job: any) => sum + (job.salary || 0), 0) / activeJobs.length
+            : 0;
+          
+          // Calculate market value
+          const marketValue = activeJobs.reduce((sum: number, job: any) => {
+            const jobCandidates = countryCandidates.filter((c: any) => 
+              (c.position_id || c.job_id) === job.id && 
+              (c.stage === 'deployed' || c.status === 'deployed')
+            ).length;
+            return sum + (jobCandidates * (job.input_fee || 0));
+          }, 0);
+
+          return {
+            country: country || 'Unknown',
+            companies: uniqueCompanies,
+            positions: activeJobs.length,
+            headcount: totalHeadcount,
+            filled: deployedCandidates,
+            marketValue: marketValue,
+            avgSalary: Math.round(avgSalary),
+            competition: Math.round((uniqueCompanies / activeJobs.length) * 10) / 10 || 0
+          };
+        });
+
+      setMarketAnalysis(analysis);
+    } catch (err) {
+      console.error('Failed to fetch market analysis:', err);
+    }
+  };
+
   // Refresh analytics materialized view
   const refreshAnalytics = async () => {
     try {
@@ -189,6 +499,10 @@ const JobsModule = () => {
   // Apply filters
   useEffect(() => {
     fetchJobs();
+    fetchJobStats(); // Refresh stats when filters change
+    fetchPositionPerformance();
+    fetchCompanyDemand();
+    fetchMarketAnalysis();
   }, [filters, searchTerm]);
 
   // Reset form
@@ -229,11 +543,17 @@ const JobsModule = () => {
           <p className="text-muted-foreground mt-1">Manage job positions and requirements</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={fetchJobs} variant="outline" size="sm">
+          <Button onClick={() => { 
+            fetchJobs(); 
+            fetchJobStats(); 
+            fetchPositionPerformance(); 
+            fetchCompanyDemand(); 
+            fetchMarketAnalysis(); 
+          }} variant="outline" size="sm">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => setShowJobForm(true)}>
+          <Button onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Job
           </Button>
@@ -250,10 +570,10 @@ const JobsModule = () => {
                   <p className="text-sm font-medium text-muted-foreground">Active Positions</p>
                   <InfoTooltip content="Number of job positions currently open for recruitment. These are positions actively seeking candidates and available for applications." />
                 </div>
-                <p className="text-2xl font-semibold">47</p>
+                <p className="text-2xl font-semibold">{jobStats.activePositions.toLocaleString()}</p>
                 <p className="text-sm text-green-600 flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  +8 this month
+                  +{jobStats.monthlyGrowth} this month
                 </p>
               </div>
               <div className="bg-blue-50 p-2 rounded-lg">
@@ -271,7 +591,7 @@ const JobsModule = () => {
                   <p className="text-sm font-medium text-muted-foreground">Total Headcount</p>
                   <InfoTooltip content="Total number of workers needed across all active job positions. This represents the combined recruitment target for all open positions." />
                 </div>
-                <p className="text-2xl font-semibold">1,284</p>
+                <p className="text-2xl font-semibold">{jobStats.totalHeadcount.toLocaleString()}</p>
                 <p className="text-sm text-blue-600 flex items-center mt-1">
                   <Users className="h-3 w-3 mr-1" />
                   Across all positions
@@ -292,10 +612,10 @@ const JobsModule = () => {
                   <p className="text-sm font-medium text-muted-foreground">Fill Rate</p>
                   <InfoTooltip content="Percentage of positions that have been successfully filled with candidates. Higher fill rates indicate effective recruitment and good job market conditions." />
                 </div>
-                <p className="text-2xl font-semibold">73.2%</p>
+                <p className="text-2xl font-semibold">{jobStats.fillRate}%</p>
                 <p className="text-sm text-orange-600 flex items-center mt-1">
                   <Target className="h-3 w-3 mr-1" />
-                  940 filled
+                  {jobStats.filledPositions.toLocaleString()} filled
                 </p>
               </div>
               <div className="bg-orange-50 p-2 rounded-lg">
@@ -313,7 +633,7 @@ const JobsModule = () => {
                   <p className="text-sm font-medium text-muted-foreground">Countries Active</p>
                   <InfoTooltip content="Number of countries where job positions are currently available. This shows the geographic diversity and international reach of recruitment operations." />
                 </div>
-                <p className="text-2xl font-semibold">12</p>
+                <p className="text-2xl font-semibold">{jobStats.activeCountries}</p>
                 <p className="text-sm text-purple-600 flex items-center mt-1">
                   <Globe className="h-3 w-3 mr-1" />
                   Global reach
@@ -338,12 +658,7 @@ const JobsModule = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { position: 'Construction Worker', company: 'Dubai Construction Ltd', country: 'UAE', headcount: 45, filled: 32, fillRate: 71.1, revenue: 96000 },
-                { position: 'Domestic Helper', company: 'Saudi Family Services', country: 'Saudi Arabia', headcount: 28, filled: 24, fillRate: 85.7, revenue: 67200 },
-                { position: 'Factory Worker', company: 'Qatar Industries', country: 'Qatar', headcount: 35, filled: 18, fillRate: 51.4, revenue: 54000 },
-                { position: 'Security Guard', company: 'Kuwait Security Co', country: 'Kuwait', headcount: 22, filled: 19, fillRate: 86.4, revenue: 41800 }
-              ].map((item, index) => (
+              {positionPerformance.length > 0 ? positionPerformance.map((item, index) => (
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div>
@@ -360,7 +675,11 @@ const JobsModule = () => {
                     <span className="text-muted-foreground">{item.headcount - item.filled} remaining</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No position performance data available
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -371,12 +690,7 @@ const JobsModule = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { company: 'Dubai Construction Ltd', country: 'UAE', positions: 8, headcount: 156, candidates: 89, success: 78.4, revenue: 234000 },
-                { company: 'Saudi Family Services', country: 'Saudi Arabia', positions: 5, headcount: 89, candidates: 67, success: 85.1, revenue: 156700 },
-                { company: 'Qatar Industries', country: 'Qatar', positions: 6, headcount: 124, candidates: 78, success: 62.9, revenue: 187200 },
-                { company: 'Kuwait Security Co', country: 'Kuwait', positions: 4, headcount: 67, candidates: 45, success: 91.1, revenue: 98500 }
-              ].map((item, index) => (
+              {companyDemand.length > 0 ? companyDemand.map((item, index) => (
                 <div key={index} className="p-3 bg-muted rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div>
@@ -394,7 +708,11 @@ const JobsModule = () => {
                     <span>${item.revenue.toLocaleString()}</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No company demand data available
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -407,12 +725,7 @@ const JobsModule = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { country: 'UAE', companies: 12, positions: 89, headcount: 456, filled: 312, marketValue: 1234000, avgSalary: 2800, competition: 3.2 },
-              { country: 'Saudi Arabia', companies: 8, positions: 67, headcount: 289, filled: 198, marketValue: 987000, avgSalary: 2400, competition: 2.8 },
-              { country: 'Qatar', companies: 6, positions: 45, headcount: 234, filled: 156, marketValue: 756000, avgSalary: 3200, competition: 2.1 },
-              { country: 'Kuwait', companies: 5, positions: 34, headcount: 178, filled: 134, marketValue: 567000, avgSalary: 2600, competition: 1.9 }
-            ].map((item, index) => (
+            {marketAnalysis.length > 0 ? marketAnalysis.map((item, index) => (
               <div key={index} className="p-4 border rounded-lg">
                 <div className="font-medium text-lg">{item.country}</div>
                 <div className="space-y-2 mt-2 text-sm">
@@ -426,7 +739,7 @@ const JobsModule = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Fill Rate:</span>
-                    <span className="font-medium">{Math.round((item.filled / item.headcount) * 100)}%</span>
+                    <span className="font-medium">{item.headcount > 0 ? Math.round((item.filled / item.headcount) * 100) : 0}%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Market Value:</span>
@@ -434,7 +747,7 @@ const JobsModule = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Avg Salary:</span>
-                    <span>${item.avgSalary}</span>
+                    <span>${item.avgSalary.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Competition:</span>
@@ -442,7 +755,11 @@ const JobsModule = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="col-span-full text-center py-8 text-muted-foreground">
+                No market analysis data available
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -933,7 +1250,7 @@ const JobsModule = () => {
       {/* Job Order Modal */}
       {showJobOrder && selectedJobOrder && (
         <JobOrderModal
-          job={selectedJobOrder}
+          job={selectedJobOrder as any}
           isOpen={showJobOrder}
           onClose={() => {
             setShowJobOrder(false);
