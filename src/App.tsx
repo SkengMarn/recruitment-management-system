@@ -8,6 +8,7 @@ import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import PerformanceMonitor from './components/PerformanceMonitor';
 import GlobalSearch from './components/GlobalSearch';
+import ErrorBoundary from './components/ErrorBoundary';
 import { 
   LayoutDashboard, 
   Users, 
@@ -236,25 +237,29 @@ export default function App() {
   };
 
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <div className="flex h-screen">
-                <AppSidebar 
-                  isCollapsed={sidebarCollapsed} 
-                  onToggle={toggleSidebar}
-                />
-                <AppContent onSidebarToggle={toggleSidebar} />
-              </div>
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </Router>
-      <PerformanceMonitor />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <ErrorBoundary>
+                  <div className="flex h-screen">
+                    <AppSidebar 
+                      isCollapsed={sidebarCollapsed} 
+                      onToggle={toggleSidebar}
+                    />
+                    <AppContent onSidebarToggle={toggleSidebar} />
+                  </div>
+                </ErrorBoundary>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Router>
+        <PerformanceMonitor />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
