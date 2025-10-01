@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from './components/ui/avatar';
 import GlobalSearch from './components/GlobalSearch';
 import LoginPage from './components/LoginPage';
+import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { 
@@ -23,7 +24,7 @@ import {
   Briefcase
 } from 'lucide-react';
 
-// Import core business modules only
+// Import modules directly to avoid lazy loading issues for now
 import Dashboard from './components/Dashboard';
 import CandidatesModule from './components/CandidatesModule';
 import AgentsModule from './components/AgentsModule';
@@ -238,6 +239,7 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/*" element={
             <ProtectedRoute>
               <div className="flex h-screen">

@@ -338,10 +338,13 @@ const EmployersModule: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Companies</p>
-                <p className="text-2xl font-semibold">89</p>
+                <p className="text-2xl font-semibold">{employers.length}</p>
                 <p className="text-sm text-green-600 flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  +5 this month
+                  {employers.filter(e => {
+                    const createdThisMonth = new Date(e.created_at || '').getMonth() === new Date().getMonth();
+                    return createdThisMonth;
+                  }).length} this month
                 </p>
               </div>
               <div className="bg-blue-50 p-2 rounded-lg">
@@ -356,10 +359,10 @@ const EmployersModule: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Contracts</p>
-                <p className="text-2xl font-semibold">67</p>
+                <p className="text-2xl font-semibold">{employers.filter(e => e.is_active).length}</p>
                 <p className="text-sm text-blue-600 flex items-center mt-1">
                   <Briefcase className="h-3 w-3 mr-1" />
-                  75.3% active rate
+                  {employers.length > 0 ? ((employers.filter(e => e.is_active).length / employers.length) * 100).toFixed(1) : 0}% active rate
                 </p>
               </div>
               <div className="bg-green-50 p-2 rounded-lg">
@@ -374,7 +377,7 @@ const EmployersModule: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Countries</p>
-                <p className="text-2xl font-semibold">15</p>
+                <p className="text-2xl font-semibold">{new Set(employers.map(e => e.country)).size}</p>
                 <p className="text-sm text-purple-600 flex items-center mt-1">
                   <Globe className="h-3 w-3 mr-1" />
                   Global reach
@@ -391,11 +394,13 @@ const EmployersModule: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Contract Value</p>
-                <p className="text-2xl font-semibold">$45.2K</p>
+                <p className="text-sm font-medium text-muted-foreground">Payment Methods</p>
+                <p className="text-2xl font-semibold">
+                  {employers.filter(e => e.payment_type === 'employer_funded').length}
+                </p>
                 <p className="text-sm text-orange-600 flex items-center mt-1">
                   <Target className="h-3 w-3 mr-1" />
-                  Per placement
+                  Employer funded
                 </p>
               </div>
               <div className="bg-orange-50 p-2 rounded-lg">
@@ -417,26 +422,23 @@ const EmployersModule: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { company: 'Dubai Construction Ltd', country: 'UAE', positions: 12, placements: 89, revenue: 234000, satisfaction: 4.8, retention: 94.2 },
-                { company: 'Saudi Family Services', country: 'Saudi Arabia', positions: 8, placements: 67, revenue: 156700, satisfaction: 4.6, retention: 91.8 },
-                { company: 'Qatar Industries Co', country: 'Qatar', positions: 10, placements: 78, revenue: 187200, satisfaction: 4.7, retention: 89.5 },
-                { company: 'Kuwait Security Group', country: 'Kuwait', positions: 6, placements: 45, revenue: 98500, satisfaction: 4.9, retention: 96.1 }
-              ].map((item, index) => (
+              {employers.slice(0, 4).map((employer, index) => (
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <div className="font-medium">{item.company}</div>
-                      <div className="text-sm text-muted-foreground">{item.country} • {item.positions} positions</div>
+                      <div className="font-medium">{employer.company_name}</div>
+                      <div className="text-sm text-muted-foreground">{employer.country} • {employer.contact_person}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-green-600">${item.revenue.toLocaleString()}</div>
-                      <div className="text-sm text-muted-foreground">{item.placements} placements</div>
+                      <div className="font-semibold text-green-600">{employer.license_number}</div>
+                      <div className="text-sm text-muted-foreground">{employer.payment_type.replace('_', ' ')}</div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Satisfaction: {item.satisfaction}/5</span>
-                    <span className="text-muted-foreground">Retention: {item.retention}%</span>
+                    <span className="text-muted-foreground">Email: {employer.email}</span>
+                    <span className={`text-muted-foreground ${employer.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                      {employer.is_active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -451,9 +453,24 @@ const EmployersModule: React.FC = () => {
           <CardContent>
             <div className="space-y-4">
               {[
-                { method: 'Employer Funded', companies: 45, percentage: 50.6, avgValue: 52000, color: 'bg-blue-500' },
-                { method: 'Candidate Funded', companies: 28, percentage: 31.5, avgValue: 38000, color: 'bg-green-500' },
-                { method: 'Hybrid Model', companies: 16, percentage: 18.0, avgValue: 45000, color: 'bg-purple-500' }
+                { 
+                  method: 'Employer Funded', 
+                  companies: employers.filter(e => e.payment_type === 'employer_funded').length, 
+                  percentage: employers.length > 0 ? (employers.filter(e => e.payment_type === 'employer_funded').length / employers.length * 100).toFixed(1) : 0, 
+                  color: 'bg-blue-500' 
+                },
+                { 
+                  method: 'Candidate Funded', 
+                  companies: employers.filter(e => e.payment_type === 'candidate_funded').length, 
+                  percentage: employers.length > 0 ? (employers.filter(e => e.payment_type === 'candidate_funded').length / employers.length * 100).toFixed(1) : 0, 
+                  color: 'bg-green-500' 
+                },
+                { 
+                  method: 'Hybrid Model', 
+                  companies: employers.filter(e => e.payment_type === 'hybrid').length, 
+                  percentage: employers.length > 0 ? (employers.filter(e => e.payment_type === 'hybrid').length / employers.length * 100).toFixed(1) : 0, 
+                  color: 'bg-purple-500' 
+                }
               ].map((item, index) => (
                 <div key={index} className="p-3 bg-muted rounded-lg">
                   <div className="flex items-center justify-between mb-2">
@@ -466,7 +483,7 @@ const EmployersModule: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <div className="font-semibold">{item.percentage}%</div>
-                      <div className="text-sm text-muted-foreground">${item.avgValue.toLocaleString()} avg</div>
+                      <div className="text-sm text-muted-foreground">of total</div>
                     </div>
                   </div>
                 </div>
@@ -483,34 +500,37 @@ const EmployersModule: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              { region: 'GCC Countries', companies: 34, positions: 156, revenue: 1234000, growth: 15.2, marketShare: 42.3 },
-              { region: 'Middle East', companies: 28, positions: 124, revenue: 987000, growth: 12.8, marketShare: 31.5 },
-              { region: 'Asia Pacific', companies: 18, positions: 89, revenue: 756000, growth: 18.7, marketShare: 20.2 },
-              { region: 'Europe', companies: 9, positions: 45, revenue: 234000, growth: 8.4, marketShare: 6.0 }
-            ].map((item, index) => (
+            {Object.entries(
+              employers.reduce((acc, employer) => {
+                const region = employer.country;
+                if (!acc[region]) {
+                  acc[region] = { count: 0, active: 0 };
+                }
+                acc[region].count++;
+                if (employer.is_active) acc[region].active++;
+                return acc;
+              }, {} as Record<string, { count: number; active: number }>)
+            ).map(([region, data], index) => (
               <div key={index} className="p-4 border rounded-lg">
-                <div className="font-medium text-lg mb-2">{item.region}</div>
+                <div className="font-medium text-lg mb-2">{region}</div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Companies:</span>
-                    <span>{item.companies}</span>
+                    <span>{data.count}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Positions:</span>
-                    <span>{item.positions}</span>
+                    <span className="text-muted-foreground">Active:</span>
+                    <span>{data.active}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Revenue:</span>
-                    <span className="font-medium text-green-600">${item.revenue.toLocaleString()}</span>
+                    <span className="text-muted-foreground">Active Rate:</span>
+                    <span className="font-medium text-green-600">{data.count > 0 ? ((data.active / data.count) * 100).toFixed(1) : 0}%</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Growth:</span>
-                    <span className="text-green-600">+{item.growth}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Market Share:</span>
-                    <span className="font-medium">{item.marketShare}%</span>
+                    <span className="text-muted-foreground">Payment Types:</span>
+                    <span className="text-xs">
+                      {employers.filter(e => e.country === region).map(e => e.payment_type).join(', ').slice(0, 20)}...
+                    </span>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
+import { apiCache } from '../performance';
 import { projectId, publicAnonKey } from './info'
 
 // Create a singleton Supabase client to avoid multiple instances
