@@ -35,7 +35,8 @@ import {
   Percent
 } from 'lucide-react';
 import { apiClient } from '../utils/supabase/client';
-import InlineSelectCreate from './ui/inline-select-create';
+import InlineSelectCreate from './InlineSelectCreate';
+import { toast } from 'sonner';
 
 interface Financial {
   id: string;
