@@ -2,11 +2,12 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from './components/ui/avatar';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
 import ResetPassword from './components/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 import PerformanceMonitor from './components/PerformanceMonitor';
+import GlobalSearch from './components/GlobalSearch';
 import { 
   LayoutDashboard, 
   Users, 
@@ -80,7 +81,7 @@ function LogoutButton() {
   );
 }
 
-function AppSidebar({ isCollapsed, onToggle }) {
+function AppSidebar({ isCollapsed, onToggle }: { isCollapsed: boolean; onToggle: () => void }) {
   const location = useLocation();
   const { user } = useAuth();
 
@@ -140,7 +141,7 @@ function AppSidebar({ isCollapsed, onToggle }) {
   );
 }
 
-function AppHeader({ onSidebarToggle }) {
+function AppHeader({ onSidebarToggle }: { onSidebarToggle: () => void }) {
   const { user, signOut } = useAuth();
 
   const handleLogout = async () => {
@@ -197,7 +198,7 @@ function AppHeader({ onSidebarToggle }) {
   );
 }
 
-function AppContent({ onSidebarToggle }) {
+function AppContent({ onSidebarToggle }: { onSidebarToggle: () => void }) {
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       <AppHeader onSidebarToggle={onSidebarToggle} />
