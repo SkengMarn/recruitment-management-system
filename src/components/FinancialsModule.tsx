@@ -70,6 +70,18 @@ const FinancialsModule = () => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    candidate_id: '',
+    type: '',
+    amount: 0,
+    currency: 'USD',
+    status: 'pending',
+    description: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+  const [isEdit, setIsEdit] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchFinancials();
@@ -138,6 +150,46 @@ const FinancialsModule = () => {
       console.error('Failed to delete financial record:', err);
       toast.error('Failed to delete financial record');
     }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      if (isEdit && selectedFinancial) {
+        await handleUpdateFinancial(selectedFinancial.id, formData);
+      } else {
+        await handleCreateFinancial(formData);
+      }
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (err) {
+      console.error('Submit error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      candidate_id: '',
+      type: '',
+      amount: 0,
+      currency: 'USD',
+      status: 'pending',
+      description: '',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setIsEdit(false);
+    setSelectedFinancial(null);
   };
 
   const formatCurrency = (amount) => {
@@ -288,20 +340,32 @@ const FinancialsModule = () => {
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-action="add-financial">
+              <Button 
+                data-action="add-financial"
+                onClick={() => {
+                  setIsEdit(false);
+                  resetForm();
+                  setIsDialogOpen(true);
+                }}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Transaction
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <FinancialForm
-                formData={formData}
-                setFormData={setFormData}
+                financial={isEdit ? selectedFinancial : null}
+                onSubmit={async (data) => {
+                  if (isEdit && selectedFinancial) {
+                    await handleUpdateFinancial(selectedFinancial.id, data);
+                  } else {
+                    await handleCreateFinancial(data);
+                  }
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}
                 candidates={candidates}
                 isEdit={isEdit}
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-                handleInputChange={handleInputChange}
               />
             </DialogContent>
           </Dialog>
